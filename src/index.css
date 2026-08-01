@@ -1,78 +1,15 @@
+@import 'tailwindcss';
+
 :root {
   color-scheme: dark;
-  --bg: #0a0a0a;
-  --text: #f5f5f5;
-  --muted: #a3a3a3;
-  --accent: #6366f1;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+}
+
+html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-}
-
-#root {
-  min-height: 100svh;
-}
-
-.layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100svh;
-}
-
-.layout__header {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 16px 24px;
-  background: var(--bg);
-  border-bottom: 1px solid #262626;
-  position: sticky;
-  top: 0;
-}
-
-.layout__logo {
-  font-weight: 700;
-  font-size: 20px;
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.layout__nav {
-  display: flex;
-  gap: 16px;
-}
-
-.layout__nav a {
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.layout__nav a:hover {
-  color: var(--text);
-}
-
-.layout__main {
-  flex: 1;
-  padding: 24px;
-}
-
-.layout__footer {
-  padding: 16px 24px;
-  color: var(--muted);
-  font-size: 12px;
-  border-top: 1px solid #262626;
+  background-color: #0a0a0a;
+  color: #f5f5f5;
 }
