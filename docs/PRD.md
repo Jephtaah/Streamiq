@@ -1,6 +1,6 @@
 # Streamiq — Product Requirements Document (PRD)
 
-**Version**: 1.0
+**Version**: 1.1
 **Date**: 2026-08-01
 **Status**: Draft — Ready for Development
 
@@ -8,7 +8,9 @@
 
 ## 1. Overview
 
-Streamiq is a lightweight, client-side web application that allows users to browse, search, and stream movies and TV series. It uses The Movie Database (TMDB) as the content catalog and metadata source, and the Aether Embed API as the video streaming provider. There is no authentication, no user accounts, and no backend server — everything runs in the browser.
+Streamiq is a lightweight, client-side web application that allows users to browse, search, and stream movies and TV series. It uses the JustWatch GraphQL API (unofficial, keyless) as the content catalog and metadata source, and the Aether Embed API as the video streaming provider. There is no authentication, no user accounts, and no backend server — everything runs in the browser.
+
+> **Update (2026-08-01)**: TMDB has been removed entirely. The catalog comes from JustWatch, and the streaming player (Aether) is keyed by the title's `stream_id`, which is resolved from JustWatch's `externalIds` at runtime. All TMDB-specific references are historical.
 
 ### 1.1 Design Philosophy
 - **Simplicity first**: Clean, minimal UI with zero clutter.
@@ -19,13 +21,13 @@ Streamiq is a lightweight, client-side web application that allows users to brow
 ### 1.2 Tech Stack
 | Layer | Technology |
 |---|---|
-| Framework | React 18 + TypeScript |
+| Framework | React 19 + TypeScript |
 | Build Tool | Vite |
-| Styling | Tailwind CSS |
-| UI Components | shadcn/ui |
-| Routing | React Router v6 |
+| Styling | Tailwind CSS v4 (via `@tailwindcss/vite`) |
+| Routing | React Router v7 |
 | Data Fetching | Native `fetch` + custom hooks |
 | Icons | Lucide React |
+| Linting | oxlint |
 
 ---
 
@@ -55,202 +57,194 @@ Streamiq is a lightweight, client-side web application that allows users to brow
 ┌─────────────────────────────────────────────────────────────┐
 │                      Streamiq (Browser)                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │   TMDB API   │  │ Aether Embed │  │  React Router    │  │
-│  │  (Search +   │  │   (iframe)   │  │   (Navigation)   │  │
-│  │   Metadata)  │  │              │  │                  │  │
+│  │ JustWatch    │  │ Aether Embed │  │  React Router    │  │
+│  │  (GraphQL)   │  │   (iframe)   │  │   (Navigation)   │  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.1 External APIs
 
-#### TMDB API (Data Source)
-- **Base URL**: `https://api.themoviedb.org/3`
-- **Authentication**: Bearer token (`Authorization: Bearer <TOKEN>`) or API key via query param (`api_key=<KEY>`).
-- **Image Base URL**: `https://image.tmdb.org/t/p/`
-- **Key Endpoints**:
-  - `GET /search/multi?query={query}&page={page}` — Search movies + TV.
-  - `GET /movie/{movie_id}` — Movie details.
-  - `GET /tv/{series_id}` — TV series details.
-  - `GET /tv/{series_id}/season/{season_number}` — Season + episode list.
-  - `GET /trending/movie/week` — Trending movies (homepage).
-  - `GET /trending/tv/week` — Trending TV (homepage).
-- **Image Sizes**:
-  - Poster: `w342`, `w500` (default), `w780`
-  - Backdrop: `w780`, `w1280` (default), `original`
-  - Still: `w300`
+#### JustWatch GraphQL API (Data Source)
+- **Endpoint**: `https://apis.justwatch.com/graphql` (POST; no auth, no API key required)
+- **Image Base URL**: `https://images.justwatch.com` (poster profiles `s92`–`s780`, backdrops `s400`–`s1200`, etc.)
+- **Key Operations** (via two queries — `popularTitles` for lists, `node(id)` for details):
+  - Search: `popularTitles(filter: { searchQuery })` — movies + TV.
+  - Trending movies / TV (homepage): `popularTitles(filter: { objectTypes })` with `sortBy: TRENDING`.
+  - Movie / series details: `node(id)` — includes seasons + episodes for series.
+  - "More Like This": `popularTitles(filter: { genres: [code] })`.
+- **Stream ID**: every title result includes `externalIds.tmdbId`, mapped into the app's `stream_id` field, which the video player requires. (The field name is internal; TMDB itself is not used.)
 
-#### Aether Embed API (Video Player)
-- **Base URL**: `https://embed.aether.mom/embed/`
-- **Movie Pattern**: `tmdb-movie-{tmdb_id}`
-- **TV Pattern**: `tmdb-tv-{tmdb_id}/{season}/{episode}`
-- **Optional Query Parameters**:
-  - `theme` — Color theme for player UI.
-  - `lang` — Interface language.
-  - `subtitles` — Default subtitle language.
-  - `downloads` — Show/hide download toggle (`true`/`false`).
-  - `watchparty` — Show/hide watch party toggle (`true`/`false`).
-- **Embedding**: Rendered in a full-width `<iframe>` with `allowfullscreen`.
+#### VidSrc Embed API (Video Player)
+- **Base URL**: `https://vidsrc.to/embed/`
+- **Movie Pattern**: `movie/{stream_id}`
+- **TV Pattern**: `tv/{stream_id}/{season}/{episode}`
+- **Embedding**: Rendered in a full-width `<iframe>` with `allowFullScreen`, `allow="autoplay; fullscreen; encrypted-media"`, and `referrerPolicy="origin"`.
 
 ### 3.2 State Management
-- **Global State**: React Context for:
-  - Search query & results cache (last 10 searches).
-  - Current watch context (what is playing, season/episode).
-- **Local State**: Component-level state for UI toggles, dropdowns, loading states.
-- **Data Caching**: Simple in-memory cache with a 5-minute TTL for TMDB responses.
+- **Global State**: None — pages fetch their own data via hooks.
+- **Local State**: Component-level state for UI toggles, dropdowns, selected season, loading states.
+- **Data Caching**: Simple in-memory cache in `src/lib/justwatch.ts` keyed by query, with a 5-minute TTL for JustWatch responses.
 
 ---
 
 ## 4. Pages & UI Specification
 
-### 4.1 Layout Shell (Global)
-- **Sticky Header**: Logo left, search bar center, nav links right (Home, Movies, TV Shows).
-- **Search Bar**: Expandable input in header on desktop; full-width on mobile. Debounced (300ms). Shows a dropdown of results on typing.
-- **Footer**: Minimal copyright + TMDB attribution.
+### 4.1 Layout Shell (Global) — `src/components/Layout.tsx`
+- **Sticky Header**: `sticky top-0 z-50` with `backdrop-blur-md`. Logo left, search bar center, nav links right (Home, Movies, TV Shows).
+- **Search Bar**: Debounced (300ms) input; typing navigates to `/search?q={query}`.
+- **Footer**: "Powered by JustWatch".
 - **Background**: `bg-neutral-950` (very dark gray, not pure black).
 - **Text**: `text-neutral-100` primary, `text-neutral-400` secondary.
 - **Accent**: `text-indigo-500` / `bg-indigo-600` for CTAs.
 
-### 4.2 Home Page (`/`)
-- **Hero Section**: Full-width backdrop carousel of trending movies/TV (auto-rotate 8s). Overlaid with title, short tagline, and a **"Watch Now"** button.
+### 4.2 Home Page (`/`) — `src/pages/HomePage.tsx`
+- **Hero Section**: Full-width backdrop carousel (auto-rotate 8s) of trending titles (3 movies + 2 TV, interleaved). Overlaid with title, synopsis (2-line clamp), and a **"Watch Now"** button.
 - **Trending Movies Row**: Horizontal scrolling poster grid. Title + rating. Click → Movie Detail.
 - **Trending TV Row**: Same as above for TV series. Click → TV Detail.
-- **Skeleton Loading**: Shimmer placeholders while TMDB data loads.
+- **Skeleton Loading**: `animate-pulse` placeholders while catalog data loads.
 
-### 4.3 Search Results Page (`/search?q={query}`)
-- **Header**: Shows "Results for '{query}'" with result count.
-- **Filter Tabs**: All | Movies | TV Shows. Default: All.
-- **Grid**: Responsive grid — 2 cols mobile, 4 cols tablet, 6 cols desktop.
+### 4.3 Search Results Page (`/search?q={query}`) — `src/pages/SearchPage.tsx`
+- **Header**: "Search results" + "Results for '{query}' — {count} found".
+- **Filter Tabs**: All (default) | Movies | TV Shows. Filters the fetched results locally (no re-fetch).
+- **Grid**: `grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6`.
 - **Card Design**:
   - Poster image (aspect-ratio 2/3).
   - Title below poster.
   - Year + rating pill.
   - Hover: slight scale-up, shadow, play icon overlay.
-- **Empty State**: Friendly illustration + "No results found. Try a different title."
+- **Empty State**: Friendly message + "Enter a search term above…" when no query, or "No results" state.
 - **Pagination**: "Load More" button (infinite scroll optional stretch).
 
-### 4.4 Movie Detail Page (`/movie/{tmdb_id}`)
-- **Backdrop**: Full-width blurred backdrop with gradient fade to background.
-- **Poster**: Large poster left (desktop) / top (mobile).
+### 4.4 Movie Detail Page (`/movie/{id}`) — `src/pages/MovieDetailPage.tsx`
+- **Backdrop**: Full-width backdrop (`object-cover`, max-height `60vh`) with gradient fade to background.
+- **Poster**: Large poster overlapping backdrop bottom edge (desktop) / centered above info (mobile).
 - **Info Block**:
   - Title (H1).
-  - Tagline (italic, muted).
-  - Metadata row: Year | Runtime | Rating | Genres.
-  - Synopsis / overview.
-  - Cast list: horizontal scroll of actor headshots + names.
-- **Primary CTA**: Large **"▶ Watch Now"** button → navigates to `/watch/movie/{tmdb_id}`.
-- **Similar Movies**: Bottom row of recommendations from TMDB.
+  - Metadata row: Year | Runtime | Rating badge | Genres.
+  - Synopsis.
+- **Primary CTA**: Large **"▶ Watch Now"** button → `/watch/movie/{id}`.
+- **More Like This**: Bottom row of genre-matched trending titles (uses `useSimilarMovies`).
 
-### 4.5 TV Series Detail Page (`/tv/{tmdb_id}`)
-- **Top Section**: Same layout as Movie Detail (backdrop, poster, info, synopsis, cast).
-- **Season Selector**: Dropdown or horizontal tabs (Season 1, Season 2, ...).
-- **Episode List**: Vertical list per selected season.
-  - Episode thumbnail (TMDB `still_path` if available; fallback to poster).
+### 4.5 TV Series Detail Page (`/tv/{id}`) — `src/pages/TVDetailPage.tsx`
+- **Top Section**: Same layout as Movie Detail (backdrop, poster, info, synopsis), plus season count.
+- **Season Selector**: Horizontal tab buttons (role `tablist`), default Season 1.
+- **Episode List**: Vertical list per selected season (`src/components/EpisodeList.tsx`).
+  - Episode thumbnail (series poster fallback — JustWatch exposes no per-episode stills).
   - Episode number + title.
   - Runtime + air date.
-  - Short overview (truncated).
-  - **"▶ Watch"** button per episode → navigates to `/watch/tv/{tmdb_id}/{season}/{episode}`.
-- **Default Selection**: Auto-select Season 1 on page load.
+  - Short overview (2-line clamp).
+  - **"▶ Watch"** link per episode → `/watch/tv/{id}/{season}/{episode}`.
+- **Default Selection**: Season 1 on page load.
 
-### 4.6 Watch Page (`/watch/movie/{tmdb_id}` or `/watch/tv/{tmdb_id}/{season}/{episode}`)
-- **Video Player**: Full-width iframe embedding Aether player.
-  - Desktop: 16:9 aspect ratio, max-width 1200px, centered.
-  - Mobile: Full viewport width, adaptive height.
+### 4.6 Watch Page (`/watch/movie/{id}` or `/watch/tv/{id}/{season}/{episode}`) — `src/pages/WatchPage.tsx`
+- **Video Player**: Full-width Aether iframe in an `aspect-video` container.
+  - Max-width `1200px` (`max-w-6xl`), centered.
+  - Black background for the player.
 - **Player Controls**: Native to Aether iframe (no custom controls needed).
-- **Info Bar Below Player**:
-  - Title + (for TV) "S{season} E{episode}: Episode Title".
-  - "← Back" button to return to detail page.
-  - (For TV) Previous / Next episode buttons.
-- **Background**: Pure black (`#000`) to reduce light bleed around the player.
+- **Info Bar Below Player**: Title (and for TV, episode context).
+- **Notes**: `id` is a JustWatch node ID (e.g. `tm92641`); the `stream_id` needed for Aether is resolved from the title details (`stream_id`) before building the embed URL.
 
 ---
 
-## 5. Component Inventory (shadcn/ui + Custom)
+## 5. Component Inventory
 
-### From shadcn/ui (pre-installed)
-| Component | Usage |
-|---|---|
-| `button` | CTAs, navigation, pagination |
-| `input` | Search bar |
-| `skeleton` | Loading states |
-| `card` | Content cards (optional) |
-| `scroll-area` | Horizontal scroll rows |
-| `select` | Season selector on TV detail page |
-| `tabs` | Search filter tabs |
-| `badge` | Rating, genre pills |
-
-### Custom Components (to build)
-| Component | Props | Description |
+### Layout & Navigation
+| Component | File | Description |
 |---|---|---|
-| `VideoPlayer` | `src: string` | Responsive iframe wrapper for Aether embed |
-| `MediaCard` | `media: Movie \| TV` | Poster card with hover effects |
-| `HeroCarousel` | `items: TrendingMedia[]` | Auto-rotating hero with backdrop |
-| `SearchBar` | `onSearch: (q) => void` | Debounced search input with dropdown |
-| `SeasonSelector` | `seasons: Season[], onSelect` | Dropdown/tabs for seasons |
-| `EpisodeList` | `episodes: Episode[], seriesId` | Vertical episode list |
-| `CastRow` | `cast: CastMember[]` | Horizontal scroll of actors |
-| `MediaGrid` | `items: Media[]` | Responsive poster grid |
-| `RatingBadge` | `rating: number` | Star + score pill |
-| `ErrorState` | `message: string` | Error fallback with retry |
-| `EmptyState` | `message: string` | Empty results display |
+| `Layout` | `src/components/Layout.tsx` | Sticky header, `<Outlet />`, footer |
+| `SearchBar` | `src/components/SearchBar.tsx` | Debounced (300ms) search input; navigates to `/search?q=` |
+
+### Media Display
+| Component | File | Description |
+|---|---|---|
+| `MediaCard` | `src/components/MediaCard.tsx` | Poster card with hover play overlay, rating, links to detail page |
+| `MediaGrid` | `src/components/MediaGrid.tsx` | Responsive grid wrapper |
+| `SkeletonCard` | `src/components/SkeletonCard.tsx` | Shimmer loading placeholder |
+| `RatingBadge` | `src/components/RatingBadge.tsx` | Star + score pill (green ≥ 7, yellow 5–6.9, red < 5) |
+| `HeroCarousel` | `src/components/HeroCarousel.tsx` | Auto-rotating hero (8s), prev/next arrows, dot indicators, pause on hover |
+
+### States & Lists
+| Component | File | Description |
+|---|---|---|
+| `ErrorState` | `src/components/ErrorState.tsx` | Centered error message + Retry |
+| `EmptyState` | `src/components/EmptyState.tsx` | Empty results display |
+| `EpisodeList` | `src/components/EpisodeList.tsx` | Vertical episode list with "Watch" links |
+| `CastRow` | `src/components/CastRow.tsx` | Horizontal cast strip. *(Not rendered — JustWatch exposes no cast data.)* |
+
+### Hooks & Utilities
+| Hook / Util | File | Description |
+|---|---|---|
+| `useDebounce` | `src/hooks/useDebounce.ts` | `useDebounce<T>(value, delay)` |
+| `useMedia` hooks | `src/hooks/useMedia.ts` | `useSearch`, `useMovie`, `useTV`, `useSeason`, `useTrendingMovies`, `useTrendingTV`, `useSimilarMovies`, `useSimilarShows` — return `{ data, loading, error, refetch }` |
+| JustWatch client | `src/lib/justwatch.ts` | GraphQL queries, caching, image URL helpers |
+| Media helpers | `src/lib/media.ts` | `getMediaType`, `getTitle`, `getYear` |
 
 ---
 
 ## 6. API Integration Spec
 
-### 6.1 TMDB — Search
-```
-GET https://api.themoviedb.org/3/search/multi?query={query}&page=1&include_adult=false
-Headers: Authorization: Bearer {TMDB_TOKEN}
-         Accept: application/json
-```
-Response shape: `{ page: number, results: MultiSearchResult[], total_pages, total_results }`
+All metadata requests are a single `POST https://apis.justwatch.com/graphql` with a JSON body `{ query, variables }` and `Content-Type: application/json`. No auth headers. Every title node carries `id` (JustWatch node ID, e.g. `tm92641` / `ts2`).
 
-Filter results to `media_type === 'movie'` or `media_type === 'tv'` only.
+### 6.1 JustWatch — Search
+```
+query {
+  popularTitles(country: "US", filter: { searchQuery: "{query}", includeTitlesWithoutUrl: true }, first: 20, sortBy: POPULAR, sortRandomSeed: 0) {
+    edges { node { id objectType content(country: "US", language: "en") { title originalReleaseYear ... on MovieOrShowContent { externalIds { tmdbId: streamId } } } } }
+  }
+}
+```
+Filter results to `objectType === 'MOVIE'` or `objectType === 'SHOW'` only.
 
-### 6.2 TMDB — Movie Details
+### 6.2 JustWatch — Movie / Series Details
 ```
-GET https://api.themoviedb.org/3/movie/{movie_id}?append_to_response=credits,similar
-Headers: Authorization: Bearer {TMDB_TOKEN}
+query {
+  node(id: "{node_id}") {
+    id objectType
+    content(country: "US", language: "en") { title overview ... }
+    ... on Show { seasons { ... episodes { ... } } }
+  }
+}
+```
+Series details include all seasons and episodes in one response.
+
+### 6.3 JustWatch — Season Details (for episodes)
+Extracted from the series `node(id)` response by matching `seasonNumber` (no separate query).
+
+### 6.4 JustWatch — Trending
+```
+query {
+  popularTitles(country: "US", filter: { objectTypes: ["MOVIE"], includeTitlesWithoutUrl: true }, first: 20, sortBy: TRENDING, sortRandomSeed: 0) { ... }
+  popularTitles(country: "US", filter: { objectTypes: ["SHOW"], includeTitlesWithoutUrl: true }, first: 20, sortBy: TRENDING, sortRandomSeed: 0) { ... }
+}
 ```
 
-### 6.3 TMDB — TV Details
+### 6.5 JustWatch — More Like This
 ```
-GET https://api.themoviedb.org/3/tv/{series_id}?append_to_response=credits,similar
-Headers: Authorization: Bearer {TMDB_TOKEN}
-```
-
-### 6.4 TMDB — Season Details (for episodes)
-```
-GET https://api.themoviedb.org/3/tv/{series_id}/season/{season_number}
-Headers: Authorization: Bearer {TMDB_TOKEN}
+query {
+  popularTitles(country: "US", filter: { objectTypes: ["MOVIE"], genres: ["{genre_code}"], includeTitlesWithoutUrl: true }, first: 20, sortBy: POPULAR, sortRandomSeed: 0) { ... }
+}
 ```
 
-### 6.5 TMDB — Trending
+### 6.6 VidSrc Embed — Movie
 ```
-GET https://api.themoviedb.org/3/trending/movie/week
-GET https://api.themoviedb.org/3/trending/tv/week
-```
-
-### 6.6 Aether Embed — Movie
-```
-https://embed.aether.mom/embed/tmdb-movie-{tmdb_id}?theme=dark&downloads=false&watchparty=false
+https://vidsrc.to/embed/movie/{stream_id}
 ```
 Rendered as:
 ```html
 <iframe
   src="{url}"
-  width="100%"
-  height="100%"
-  frameborder="0"
-  allowfullscreen
-  allow="fullscreen; autoplay"
+  title="Watch"
+  allow="autoplay; fullscreen; encrypted-media"
+  allowFullScreen
+  referrerPolicy="origin"
+  class="h-full w-full"
 ></iframe>
 ```
 
-### 6.7 Aether Embed — TV Episode
+### 6.7 VidSrc Embed — TV Episode
 ```
-https://embed.aether.mom/embed/tmdb-tv-{tmdb_id}/{season}/{episode}?theme=dark&downloads=false&watchparty=false
+https://vidsrc.to/embed/tv/{stream_id}/{season}/{episode}
 ```
 Same iframe rendering as above.
 
@@ -259,10 +253,11 @@ Same iframe rendering as above.
 ## 7. TypeScript Types
 
 ```typescript
-// types/tmdb.ts
+// types/media.ts
 
 export interface Movie {
-  id: number;
+  id: string;                  // JustWatch node ID, e.g. "tm92641"
+  stream_id: number | null;    // used for Aether embed URLs
   title: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -270,13 +265,14 @@ export interface Movie {
   release_date: string;
   runtime?: number;
   vote_average: number;
-  genres?: { id: number; name: string }[];
+  genres?: { id: number; name: string; code: string }[];
   credits?: { cast: CastMember[] };
   similar?: { results: Movie[] };
 }
 
 export interface TVSeries {
-  id: number;
+  id: string;                  // JustWatch node ID, e.g. "ts2"
+  stream_id: number | null;
   name: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -284,22 +280,26 @@ export interface TVSeries {
   first_air_date: string;
   number_of_seasons: number;
   vote_average: number;
-  genres?: { id: number; name: string }[];
+  genres?: { id: number; name: string; code: string }[];
   seasons: Season[];
   credits?: { cast: CastMember[] };
   similar?: { results: TVSeries[] };
 }
 
 export interface Season {
-  id: number;
+  id: string;
   season_number: number;
   name: string;
   episode_count: number;
   poster_path: string | null;
 }
 
+export interface SeasonDetails extends Season {
+  episodes: Episode[];
+}
+
 export interface Episode {
-  id: number;
+  id: string;
   episode_number: number;
   name: string;
   overview: string;
@@ -317,8 +317,11 @@ export interface CastMember {
 
 export type MediaType = 'movie' | 'tv';
 
+export type TrendingMedia = Movie | TVSeries;
+
 export interface SearchResult {
-  id: number;
+  id: string;
+  stream_id: number | null;
   media_type: MediaType;
   title?: string;        // movie
   name?: string;         // tv
@@ -326,6 +329,13 @@ export interface SearchResult {
   release_date?: string;
   first_air_date?: string;
   vote_average: number;
+}
+
+export interface PaginatedResponse<T> {
+  page: number;
+  results: T[];
+  total_pages: number;
+  total_results: number;
 }
 ```
 
@@ -337,73 +347,58 @@ export interface SearchResult {
 |---|---|---|
 | `/` | Home | — |
 | `/search` | Search Results | `?q={query}` |
-| `/movie/:id` | Movie Detail | `id` = TMDB movie ID |
-| `/tv/:id` | TV Detail | `id` = TMDB series ID |
-| `/watch/movie/:id` | Watch Movie | `id` = TMDB movie ID |
-| `/watch/tv/:id/:season/:episode` | Watch TV Episode | `id` = TMDB series ID |
+| `/movie/:id` | Movie Detail | `id` = JustWatch node ID |
+| `/tv/:id` | TV Detail | `id` = JustWatch node ID |
+| `/watch/movie/:id` | Watch Movie | `id` = JustWatch node ID |
+| `/watch/tv/:id/:season/:episode` | Watch TV Episode | `id` = JustWatch node ID |
 
-**404 Fallback**: Redirect to `/` or show a "Page Not Found" with a link home.
+**404 Fallback**: Redirect to `/` or show a "Page Not Found" with a link home (not yet implemented).
 
 ---
 
 ## 9. Environment Variables
 
-Create a `.env` file (never commit to git; add to `.gitignore`):
-
-```
-VITE_TMDB_API_KEY=your_tmdb_api_key_here
-VITE_TMDB_ACCESS_TOKEN=your_tmdb_read_access_token_here
-```
-
-The app reads these via `import.meta.env.VITE_TMDB_*`.
-
-**How to get a TMDB key**:
-1. Sign up at https://www.themoviedb.org/signup
-2. Go to Settings → API → Request an API key
-3. Copy the **API Key (v3 auth)** and **API Read Access Token (v4)**
+No environment variables are required. The JustWatch API needs no API key, and the Aether embed URLs are built from the `stream_id` returned by JustWatch. Any leftover `.env` file can be deleted — the app never reads it.
 
 ---
 
-## 10. Design Tokens (Tailwind)
+## 10. Design Tokens
 
-```css
-/* These map to tailwind classes used throughout */
---background: 0 0% 3.9%;        /* neutral-950 */
---foreground: 0 0% 98%;         /* neutral-50 */
---muted: 0 0% 14.9%;            /* neutral-800 */
---muted-foreground: 0 0% 63.9%; /* neutral-400 */
---accent: 239 84% 67%;          /* indigo-500 */
---accent-foreground: 0 0% 100%;
---card: 0 0% 7%;                /* slightly lighter than bg */
---border: 0 0% 20%;
---radius: 0.75rem;
-```
+The app uses Tailwind v4 default dark palette (no custom theme config):
+- **Background**: `bg-neutral-950` (`#0a0a0a`), pure black only behind the player.
+- **Foreground**: `text-neutral-100`.
+- **Muted**: `text-neutral-400` / `text-neutral-500`.
+- **Surface**: `bg-neutral-900` (cards, inputs), borders `border-neutral-800`.
+- **Accent**: indigo (`text-indigo-500`, `bg-indigo-600 hover:bg-indigo-700`).
+- **Radius**: `rounded-lg` for cards/buttons, `rounded-full` for pills/tabs.
+- **Focus**: `focus-visible:ring-2 ring-indigo-500` with `ring-offset-neutral-950`.
 
 ### Typography Scale
 | Element | Class |
 |---|---|
-| Page Title | `text-4xl font-bold tracking-tight` |
-| Section Title | `text-2xl font-semibold` |
-| Card Title | `text-sm font-medium leading-tight` |
-| Body | `text-sm text-neutral-400 leading-relaxed` |
-| Caption | `text-xs text-neutral-500` |
+| Hero Title | `text-2xl font-bold md:text-4xl` |
+| Page Title | `text-2xl font-bold` / `text-3xl font-bold md:text-4xl` |
+| Section Title | `text-xl font-bold` |
+| Card Title | `text-sm font-medium` |
+| Body | `text-sm text-neutral-300 leading-relaxed` |
+| Caption | `text-xs text-neutral-400` / `text-neutral-500` |
 
 ---
 
 ## 11. Performance & UX Requirements
 
-- **Image Optimization**: Use `loading="lazy"` for below-fold images. Use appropriate TMDB image sizes.
+- **Image Optimization**: Use `loading="lazy"` for below-fold images; JustWatch image profiles (`s500` posters, `s1200` backdrops, `s400` stills).
 - **Debounced Search**: 300ms debounce on search input to avoid excessive API calls.
-- **Error Handling**: Graceful fallbacks for failed API calls — show retry buttons and friendly messages.
+- **Error Handling**: Graceful fallbacks for failed API calls — `ErrorState` with a Retry button.
 - **Responsive Breakpoints**:
   - Mobile: `< 640px` (1–2 columns)
   - Tablet: `640px–1024px` (3–4 columns)
   - Desktop: `> 1024px` (5–6 columns)
 - **Accessibility**:
-  - All images have `alt` text.
+  - All images have `alt` text (empty `alt` for decorative).
   - Buttons have clear focus states.
   - Color contrast meets WCAG AA.
-  - Keyboard navigable episode lists.
+  - Semantic landmarks, `role="tablist"` for filters/seasons, `aria-current` on carousel dots.
 
 ---
 
@@ -411,11 +406,10 @@ The app reads these via `import.meta.env.VITE_TMDB_*`.
 
 | Asset | Source | Notes |
 |---|---|---|
-| Posters | TMDB `image.tmdb.org` | Lazy loaded |
-| Backdrops | TMDB `image.tmdb.org` | Preload hero only |
-| Actor headshots | TMDB `image.tmdb.org` | Lazy loaded |
-| Logo | Custom SVG or text logo | "Streamiq" wordmark in indigo-500 |
-| Favicon | Simple "S" icon | Place in `/public` |
+| Posters | JustWatch `images.justwatch.com` | Lazy loaded |
+| Backdrops | JustWatch `images.justwatch.com` | Preload hero only |
+| Logo | Custom text logo | "Streamiq" wordmark in indigo-500 |
+| Favicon | `/public/favicon.svg` | Existing |
 
 No custom illustrations needed beyond Lucide icons.
 
@@ -425,10 +419,10 @@ No custom illustrations needed beyond Lucide icons.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| TMDB API rate limit | High | Implement request caching; warn user if limit hit |
+| JustWatch GraphQL changes/breaks (unofficial) | High | Keep queries isolated in `src/lib/justwatch.ts`; add graceful errors + retry |
 | Aether embed stops working | High | Display "Source unavailable" message; allow user to try again |
-| TMDB image CDN slow | Medium | Use smaller poster sizes; lazy load; placeholder skeletons |
-| CORS on TMDB | Low | TMDB supports CORS for API; use proper headers |
+| JustWatch image CDN slow | Medium | Use smaller image profiles; lazy load; placeholder skeletons |
+| JustWatch throttling | Medium | In-memory cache with 5-min TTL; keep request volume low |
 | No results for niche queries | Low | Show helpful empty state with suggestions |
 
 ---
@@ -438,5 +432,3 @@ No custom illustrations needed beyond Lucide icons.
 1. Should we support multiple languages for the UI? (Default: English; stretch: i18n)
 2. Should we add a "Recently Viewed" list using `localStorage`? (Stretch)
 3. Should the hero carousel auto-play with muted video previews? (Stretch — GIFs only, no video)
-
-(End of file - total 440 lines)
