@@ -5,6 +5,7 @@ import SearchPage from './pages/SearchPage'
 import MovieDetailPage from './pages/MovieDetailPage'
 import TVDetailPage from './pages/TVDetailPage'
 import WatchPage from './pages/WatchPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="tv/:id" element={<TVDetailPage />} />
           <Route path="watch/movie/:id" element={<WatchPage />} />
           <Route path="watch/tv/:id/:season/:episode" element={<WatchPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

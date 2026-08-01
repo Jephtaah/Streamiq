@@ -44,3 +44,4 @@ React 19 · TypeScript · Vite · Tailwind CSS · React Router · Lucide React
 - Routes use JustWatch node IDs (e.g. `/movie/tm92641`); the TMDB ID needed for streaming is resolved at runtime.
 - JustWatch is an undocumented, unofficial API intended for non-commercial projects — it may change or throttle. All responses are cached for 5 minutes to be polite.
 - Cast/similarity data is not exposed by JustWatch's public schema; the "More Like This" rows use genre-matched trending instead.
+- Unknown routes render a 404 page. For static hosts, a SPA fallback is included (`public/_redirects` rewrites all paths to `index.html`; Vercel needs a `vercel.json` rewrite instead).

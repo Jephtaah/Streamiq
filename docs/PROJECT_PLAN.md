@@ -99,7 +99,7 @@ Scaffolded with Vite + React + TypeScript. See `PRD.md` Section 1.2.
 - [x] Search page shows results within 2 seconds of page load.
 - [x] Filter tabs correctly filter results without re-fetching.
 - [x] Empty search query shows the empty state.
-- [ ] Responsive: works on 375px mobile up to 1920px desktop.
+- [x] Responsive: works on 375px mobile up to 1920px desktop.
 
 **Key Technical Notes**:
 - Hero carousel: store `currentIndex` in state; clear interval on unmount and manual navigation.
@@ -150,7 +150,7 @@ Scaffolded with Vite + React + TypeScript. See `PRD.md` Section 1.2.
 - [x] `/watch/tv/{node_id}/1/1` loads an iframe with the correct TV URL pattern.
 - [x] Player fills available width while maintaining 16:9 aspect ratio.
 - [x] On mobile, player is edge-to-edge with no side padding.
-- [ ] Page title updates to "Watch {title} — Streamiq" (optional stretch: use `document.title`).
+- [x] Page title updates to "Watch {title} — Streamiq" (via `useDocumentTitle`).
 
 **Key Technical Notes**:
 - Use `useParams()` from React Router to extract `:id`, `:season`, `:episode`.
@@ -171,30 +171,31 @@ Scaffolded with Vite + React + TypeScript. See `PRD.md` Section 1.2.
 **Deliverables**:
 | # | Task | Description |
 |---|---|---|
-| 1 | Responsive audit | Test every page at 375px, 768px, 1024px, 1440px, 1920px. Fix any layout breaks. |
-| 2 | Dark mode consistency | Ensure all pages use `bg-neutral-950` / `text-neutral-100`. No white backgrounds anywhere. |
-| 3 | Image optimization | Add `loading="lazy"` to all non-hero images. Use appropriate JustWatch image profiles. |
-| 4 | Loading states | Every async operation has a skeleton or spinner. No blank screens during fetching. |
-| 5 | Error boundaries | Add a simple error boundary component (e.g. `react-error-boundary` or a class component with `componentDidCatch`) with a "Reload" button. |
-| 6 | SEO basics | Update `index.html` `<title>` to "Streamiq — Watch Movies & TV Series". Add `<meta name="description">`. |
-| 7 | 404 page | Create `src/pages/NotFoundPage.tsx`. Route: `*` catch-all in the router. |
-| 8 | Keyboard navigation | Ensure all interactive elements are focusable. Episode list navigable with arrow keys (optional). |
-| 9 | Build verification | `npm run build` produces a `dist/` folder. `npm run preview` serves it correctly. Note: SPA routing on static hosts may need `_redirects` or `404.html` fallback. |
-| 10 | README update | Keep `README.md` accurate: description, tech stack, data sources, `npm run dev`, `npm run build`. No API key setup required. |
+| 1 | Responsive audit | Test every page at 375px, 768px, 1024px, 1440px, 1920px. Fix any layout breaks. **Done** — verified no horizontal overflow at all breakpoints (Playwright + Chrome); header/nav fit on 375px; watch player is edge-to-edge on mobile, centered `max-w-6xl` with `rounded-lg` on desktop. |
+| 2 | Dark mode consistency | Ensure all pages use `bg-neutral-950` / `text-neutral-100`. No white backgrounds anywhere. **Done** — audited; only intentional white is the carousel dot indicator. |
+| 3 | Image optimization | Add `loading="lazy"` to all non-hero images. Use appropriate JustWatch image profiles. **Done** — `MediaCard`, `EpisodeList`, `CastRow`, and both detail-page posters lazy-load; hero backdrops stay eager. |
+| 4 | Loading states | Every async operation has a skeleton or spinner. No blank screens during fetching. **Done** — audited all pages (hero + card skeletons, detail/season skeletons, watch "Loading stream..."). |
+| 5 | Error boundaries | Add a simple error boundary component (e.g. `react-error-boundary` or a class component with `componentDidCatch`) with a "Reload" button. **Done** — `src/components/ErrorBoundary.tsx` (class component) wraps the app in `main.tsx`. |
+| 6 | SEO basics | Update `index.html` `<title>` to "Streamiq — Watch Movies & TV Series". Add `<meta name="description">`. **Done**. |
+| 7 | 404 page | Create `src/pages/NotFoundPage.tsx`. Route: `*` catch-all in the router. **Done**. |
+| 8 | Keyboard navigation | Ensure all interactive elements are focusable. Episode list navigable with arrow keys (optional). **Done** — focus-visible rings across all controls (carousel arrows + dots, tabs, cards, buttons); episode list supports ↑/↓ arrow navigation with roving focus. |
+| 9 | Build verification | `npm run build` produces a `dist/` folder. `npm run preview` serves it correctly. Note: SPA routing on static hosts may need `_redirects` or `404.html` fallback. **Done** — build + lint clean; added `public/_redirects` (`/* /index.html 200`) for Netlify-style hosts. |
+| 10 | README update | Keep `README.md` accurate: description, tech stack, data sources, `npm run dev`, `npm run build`. No API key setup required. **Done**. |
 
 **Acceptance Criteria**:
-- [ ] App looks great and functions correctly on mobile, tablet, and desktop.
-- [ ] No console errors or warnings in production build.
-- [ ] All images lazy-load.
-- [ ] 404 page displays for unknown routes.
-- [ ] Build output is a clean static site in `dist/`.
-- [ ] README is accurate and helpful.
+- [x] App looks great and functions correctly on mobile, tablet, and desktop.
+- [x] No console errors or warnings in production build.
+- [x] All images lazy-load.
+- [x] 404 page displays for unknown routes.
+- [x] Build output is a clean static site in `dist/`.
+- [x] README is accurate and helpful.
 
 **Key Technical Notes**:
 - For static hosting (Vercel, Netlify, GitHub Pages), add SPA fallback:
-  - **Netlify**: `public/_redirects` with `/* /index.html 200`
+  - **Netlify**: `public/_redirects` with `/* /index.html 200` (added)
   - **Vercel**: `vercel.json` with `{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }`
 - Performance: bundle size target under 500KB gzipped (currently ~91KB gzipped JS).
+- **Observed (2026-08-01)**: `apis.justwatch.com` intermittently returns `403` on the CORS preflight (`OPTIONS`) for rapid automated browser traffic — a rate-limit/bot-protection behaviour, not an app bug. The API serves proper CORS headers normally (verified via curl and browsers after a cooldown). The app degrades gracefully to the `ErrorState` retry UI. The 5-minute in-memory cache helps absorb repeated navigations within a session.
 
 ---
 

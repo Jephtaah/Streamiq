@@ -120,7 +120,7 @@ export default function HeroCarousel({ items }: HeroCarouselProps) {
                 type="button"
                 onClick={() => goTo(index)}
                 className={cn(
-                  'h-2 w-2 rounded-full transition-colors',
+                  'h-2 w-2 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950',
                   index === currentIndex ? 'bg-white' : 'bg-white/40 hover:bg-white/70',
                 )}
                 aria-label={`Go to slide ${index + 1}`}

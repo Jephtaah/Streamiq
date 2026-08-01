@@ -69,6 +69,7 @@ export default function MovieDetailPage() {
             <img
               src={posterUrl}
               alt={`${movie.title} poster`}
+              loading="lazy"
               className="w-40 shrink-0 rounded-lg shadow-2xl md:w-56"
             />
           ) : null}

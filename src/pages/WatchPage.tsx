@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom'
 import ErrorState from '../components/ErrorState'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import { useMovie, useTV } from '../hooks/useMedia'
 
 type WatchRouteParams = {
@@ -34,6 +35,7 @@ export default function WatchPage() {
     ? seriesState.data?.stream_id
     : movieState.data?.stream_id
   const title = isTV ? seriesState.data?.name : movieState.data?.title
+  useDocumentTitle(title ? `Watch ${title}` : null)
 
   if (loading) {
     return (
@@ -60,9 +62,11 @@ export default function WatchPage() {
   const url = buildAetherUrl(type, streamId, params.season, params.episode)
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6">
-      <h1 className="mb-4 text-xl font-bold text-neutral-100">{title}</h1>
-      <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+    <div className="mx-auto w-full max-w-6xl py-6 md:px-6">
+      <h1 className="mb-4 px-4 text-xl font-bold text-neutral-100 md:px-0">
+        {title}
+      </h1>
+      <div className="aspect-video w-full overflow-hidden bg-black md:rounded-lg">
         <iframe
           src={url}
           title={title ?? 'Watch'}

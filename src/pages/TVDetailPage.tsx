@@ -68,6 +68,7 @@ export default function TVDetailPage() {
             <img
               src={posterUrl}
               alt={`${series.name} poster`}
+              loading="lazy"
               className="w-40 shrink-0 rounded-lg shadow-2xl md:w-56"
             />
           ) : null}

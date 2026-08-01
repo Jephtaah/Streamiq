@@ -38,6 +38,7 @@ export default function SearchBar() {
         type="search"
         value={value}
         onChange={(event) => setValue(event.target.value)}
+        aria-label="Search movies and TV shows"
         placeholder="Search movies, TV…"
         className="w-full rounded-full border border-neutral-800 bg-neutral-900 py-2 pl-9 pr-4 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none"
       />

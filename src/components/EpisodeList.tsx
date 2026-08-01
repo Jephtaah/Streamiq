@@ -1,3 +1,4 @@
+import { useRef, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
 import { getPosterUrl, getStillUrl } from '../lib/justwatch'
@@ -16,17 +17,37 @@ export default function EpisodeList({
   seasonNumber,
   fallbackPoster,
 }: EpisodeListProps) {
+  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([])
+
   if (episodes.length === 0) return null
+
+  function handleListKeyDown(
+    event: KeyboardEvent<HTMLElement>,
+    index: number,
+  ) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      linkRefs.current[(index + 1) % episodes.length]?.focus()
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      linkRefs.current[(index - 1 + episodes.length) % episodes.length]?.focus()
+    }
+  }
 
   return (
     <ul className="space-y-2">
-      {episodes.map((episode) => {
+      {episodes.map((episode, index) => {
         const thumbnail = getStillUrl(episode.still_path) ?? getPosterUrl(fallbackPoster)
         return (
           <li key={episode.id}>
             <Link
+              ref={(el) => {
+                linkRefs.current[index] = el
+              }}
               to={`/watch/tv/${seriesId}/${seasonNumber}/${episode.episode_number}`}
-              className="group flex gap-4 rounded-lg p-3 transition-colors hover:bg-neutral-900"
+              aria-label={`Watch ${episode.name}`}
+              onKeyDown={(event) => handleListKeyDown(event, index)}
+              className="group flex gap-4 rounded-lg p-3 transition-colors hover:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
               <div className="w-32 shrink-0 overflow-hidden rounded-md bg-neutral-900">
                 {thumbnail ? (
