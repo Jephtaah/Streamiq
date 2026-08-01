@@ -1,5 +1,5 @@
-import { getPosterUrl } from '../lib/tmdb'
-import type { CastMember } from '../types/tmdb'
+import { getPosterUrl } from '../lib/justwatch'
+import type { CastMember } from '../types/media'
 
 interface CastRowProps {
   cast: CastMember[]

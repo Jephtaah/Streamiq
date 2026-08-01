@@ -1,5 +1,6 @@
 export interface Movie {
-  id: number;
+  id: string;
+  stream_id: number | null;
   title: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -7,13 +8,14 @@ export interface Movie {
   release_date: string;
   runtime?: number;
   vote_average: number;
-  genres?: { id: number; name: string }[];
+  genres?: { id: number; name: string; code: string }[];
   credits?: { cast: CastMember[] };
   similar?: { results: Movie[] };
 }
 
 export interface TVSeries {
-  id: number;
+  id: string;
+  stream_id: number | null;
   name: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -21,14 +23,14 @@ export interface TVSeries {
   first_air_date: string;
   number_of_seasons: number;
   vote_average: number;
-  genres?: { id: number; name: string }[];
+  genres?: { id: number; name: string; code: string }[];
   seasons: Season[];
   credits?: { cast: CastMember[] };
   similar?: { results: TVSeries[] };
 }
 
 export interface Season {
-  id: number;
+  id: string;
   season_number: number;
   name: string;
   episode_count: number;
@@ -40,7 +42,7 @@ export interface SeasonDetails extends Season {
 }
 
 export interface Episode {
-  id: number;
+  id: string;
   episode_number: number;
   name: string;
   overview: string;
@@ -58,8 +60,11 @@ export interface CastMember {
 
 export type MediaType = 'movie' | 'tv';
 
+export type TrendingMedia = Movie | TVSeries;
+
 export interface SearchResult {
-  id: number;
+  id: string;
+  stream_id: number | null;
   media_type: MediaType;
   title?: string; // movie
   name?: string; // tv
@@ -69,7 +74,7 @@ export interface SearchResult {
   vote_average: number;
 }
 
-export interface TMDBResponse<T> {
+export interface PaginatedResponse<T> {
   page: number;
   results: T[];
   total_pages: number;

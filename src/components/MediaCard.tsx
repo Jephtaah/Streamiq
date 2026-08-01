@@ -1,35 +1,13 @@
 import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
-import { getPosterUrl } from '../lib/tmdb'
-import type { MediaType, Movie, SearchResult, TVSeries } from '../types/tmdb'
+import { getPosterUrl } from '../lib/justwatch'
+import { getMediaType, getTitle, getYear, type MediaCardItem } from '../lib/media'
 import { cn } from '../lib/utils'
 import RatingBadge from './RatingBadge'
-
-export type MediaCardItem = SearchResult | Movie | TVSeries
 
 interface MediaCardProps {
   item: MediaCardItem
   className?: string
-}
-
-function getMediaType(item: MediaCardItem): MediaType {
-  if ('media_type' in item) return item.media_type
-  return 'title' in item ? 'movie' : 'tv'
-}
-
-function getTitle(item: MediaCardItem): string | undefined {
-  if ('title' in item) return item.title
-  return item.name
-}
-
-function getYear(item: MediaCardItem): string | undefined {
-  if ('release_date' in item && item.release_date) {
-    return item.release_date.slice(0, 4)
-  }
-  if ('first_air_date' in item && item.first_air_date) {
-    return item.first_air_date.slice(0, 4)
-  }
-  return undefined
 }
 
 export default function MediaCard({ item, className }: MediaCardProps) {
