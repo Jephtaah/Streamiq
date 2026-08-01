@@ -13,7 +13,7 @@ A lightweight, client-side web app for browsing, searching, and streaming movies
 ## Data Sources
 
 - **Catalog & metadata**: [JustWatch GraphQL API](https://apis.justwatch.com/graphql) (unofficial, no API key required). Search, trending, details, seasons, episodes, and images all come from here.
-- **Streaming**: [Aether Embed](https://embed.aether.mom) — the player takes TMDB IDs, which JustWatch returns as `externalIds.tmdbId`, so each title resolves directly to a playable Aether URL (e.g. `tmdb-movie-27205`).
+- **Streaming**: [VidSrc](https://vidsrc.to) — the player takes TMDB IDs, which JustWatch returns as `externalIds.tmdbId`, so each title resolves directly to a playable embed URL (e.g. `https://vidsrc.to/embed/movie/27205`).
 
 ## Getting Started
 

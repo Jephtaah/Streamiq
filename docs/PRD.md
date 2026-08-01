@@ -73,16 +73,12 @@ Streamiq is a lightweight, client-side web application that allows users to brow
   - Trending movies / TV (homepage): `popularTitles(filter: { objectTypes })` with `sortBy: TRENDING`.
   - Movie / series details: `node(id)` — includes seasons + episodes for series.
   - "More Like This": `popularTitles(filter: { genres: [code] })`.
-- **Stream ID**: every title result includes `externalIds.tmdbId`, mapped into the app's `stream_id` field, which the Aether player requires. (The field name is internal; TMDB itself is not used.)
+- **Stream ID**: every title result includes `externalIds.tmdbId`, mapped into the app's `stream_id` field, which the video player requires. (The field name is internal; TMDB itself is not used.)
 
-#### Aether Embed API (Video Player)
-- **Base URL**: `https://embed.aether.mom/embed/`
-- **Movie Pattern**: `tmdb-movie-{stream_id}`
-- **TV Pattern**: `tmdb-tv-{stream_id}/{season}/{episode}`
-- **Optional Query Parameters**:
-  - `theme` — Color theme for player UI (`dark`).
-  - `downloads` — Show/hide download toggle (`false`).
-  - `watchparty` — Show/hide watch party toggle (`false`).
+#### VidSrc Embed API (Video Player)
+- **Base URL**: `https://vidsrc.to/embed/`
+- **Movie Pattern**: `movie/{stream_id}`
+- **TV Pattern**: `tv/{stream_id}/{season}/{episode}`
 - **Embedding**: Rendered in a full-width `<iframe>` with `allowFullScreen`, `allow="autoplay; fullscreen; encrypted-media"`, and `referrerPolicy="origin"`.
 
 ### 3.2 State Management
@@ -230,9 +226,9 @@ query {
 }
 ```
 
-### 6.6 Aether Embed — Movie
+### 6.6 VidSrc Embed — Movie
 ```
-https://embed.aether.mom/embed/tmdb-movie-{stream_id}?theme=dark&downloads=false&watchparty=false
+https://vidsrc.to/embed/movie/{stream_id}
 ```
 Rendered as:
 ```html
@@ -246,9 +242,9 @@ Rendered as:
 ></iframe>
 ```
 
-### 6.7 Aether Embed — TV Episode
+### 6.7 VidSrc Embed — TV Episode
 ```
-https://embed.aether.mom/embed/tmdb-tv-{stream_id}/{season}/{episode}?theme=dark&downloads=false&watchparty=false
+https://vidsrc.to/embed/tv/{stream_id}/{season}/{episode}
 ```
 Same iframe rendering as above.
 

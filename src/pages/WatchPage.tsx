@@ -9,17 +9,15 @@ type WatchRouteParams = {
   episode?: string
 }
 
-function buildAetherUrl(
+function buildEmbedUrl(
   type: 'movie' | 'tv',
   streamId: number,
   season?: string,
   episode?: string,
 ): string {
-  const base =
-    type === 'movie'
-      ? `https://embed.aether.mom/embed/tmdb-movie-${streamId}`
-      : `https://embed.aether.mom/embed/tmdb-tv-${streamId}/${season}/${episode}`
-  return `${base}?theme=dark&downloads=false&watchparty=false`
+  return type === 'movie'
+    ? `https://vidsrc.to/embed/movie/${streamId}`
+    : `https://vidsrc.to/embed/tv/${streamId}/${season}/${episode}`
 }
 
 export default function WatchPage() {
@@ -59,7 +57,7 @@ export default function WatchPage() {
   }
 
   const type = isTV ? 'tv' : 'movie'
-  const url = buildAetherUrl(type, streamId, params.season, params.episode)
+  const url = buildEmbedUrl(type, streamId, params.season, params.episode)
 
   return (
     <div className="mx-auto w-full max-w-6xl py-6 md:px-6">

@@ -3,7 +3,7 @@
 **Version**: 1.1
 **Date**: 2026-08-01
 **Based on**: `PRD.md` (same directory)
-**Goal**: Build a client-side React app that searches a movie/TV catalog (JustWatch) and streams via the Aether Embed API.
+**Goal**: Build a client-side React app that searches a movie/TV catalog (JustWatch) and streams via the VidSrc Embed API.
 
 > **Update (2026-08-01)**: The data layer is the unofficial **JustWatch GraphQL API** (`https://apis.justwatch.com/graphql`) — keyless, no env vars required. Routes use JustWatch node IDs (e.g. `/movie/tm92641`). TMDB has been removed entirely: source files are `src/lib/justwatch.ts`, `src/types/media.ts`, `src/hooks/useMedia.ts`, and the player is keyed by each title's `stream_id` (resolved from JustWatch `externalIds` at runtime). TMDB-specific references below are historical.
 
@@ -142,11 +142,11 @@ Scaffolded with Vite + React + TypeScript. See `PRD.md` Section 1.2.
 **Deliverables**:
 | # | File | Description |
 |---|---|---|
-| 1 | `src/pages/WatchPage.tsx` | **Full implementation**: Determines route type from URL (`/watch/movie/:id` vs `/watch/tv/:id/:season/:episode`). Fetches title details (via `useMovie()`/`useTV()`) to resolve `stream_id`, then renders the Aether iframe in an `aspect-video` container, max-width `1200px`, black player background. Shows a "Loading stream..." state and an error state with retry if the title can't be resolved. |
+| 1 | `src/pages/WatchPage.tsx` | **Full implementation**: Determines route type from URL (`/watch/movie/:id` vs `/watch/tv/:id/:season/:episode`). Fetches title details (via `useMovie()`/`useTV()`) to resolve `stream_id`, then renders the video iframe in an `aspect-video` container, max-width `1200px`, black player background. Shows a "Loading stream..." state and an error state with retry if the title can't be resolved. |
 | 2 | `src/components/VideoPlayer.tsx` | *(Optional — the iframe is currently inlined in `WatchPage`.)* Could extract a reusable wrapper later. |
 
 **Acceptance Criteria**:
-- [x] `/watch/movie/{node_id}` loads an iframe with `src=https://embed.aether.mom/embed/tmdb-movie-{stream_id}?theme=dark&downloads=false&watchparty=false` (stream ID resolved from details).
+- [x] `/watch/movie/{node_id}` loads an iframe with `src=https://vidsrc.to/embed/movie/{stream_id}` (stream ID resolved from details).
 - [x] `/watch/tv/{node_id}/1/1` loads an iframe with the correct TV URL pattern.
 - [x] Player fills available width while maintaining 16:9 aspect ratio.
 - [x] On mobile, player is edge-to-edge with no side padding.
@@ -155,12 +155,11 @@ Scaffolded with Vite + React + TypeScript. See `PRD.md` Section 1.2.
 **Key Technical Notes**:
 - Use `useParams()` from React Router to extract `:id`, `:season`, `:episode`.
 - Resolve `stream_id` from the title details response before building the embed URL; show an error if missing.
-- Aether URL construction:
+- Embed URL construction:
   ```ts
-  const base = type === 'movie'
-    ? `https://embed.aether.mom/embed/tmdb-movie-${streamId}`
-    : `https://embed.aether.mom/embed/tmdb-tv-${streamId}/${season}/${episode}`;
-  const url = `${base}?theme=dark&downloads=false&watchparty=false`;
+  const url = type === 'movie'
+    ? `https://vidsrc.to/embed/movie/${streamId}`
+    : `https://vidsrc.to/embed/tv/${streamId}/${season}/${episode}`;
   ```
 
 ---
@@ -302,12 +301,12 @@ No headers required for JustWatch calls.
 
 ---
 
-## Quick Reference: Aether Embed URLs
+## Quick Reference: VidSrc Embed URLs
 
 | Type | URL Pattern |
 |---|---|
-| Movie | `https://embed.aether.mom/embed/tmdb-movie-{stream_id}?theme=dark&downloads=false&watchparty=false` |
-| TV Episode | `https://embed.aether.mom/embed/tmdb-tv-{stream_id}/{season}/{episode}?theme=dark&downloads=false&watchparty=false` |
+| Movie | `https://vidsrc.to/embed/movie/{stream_id}` |
+| TV Episode | `https://vidsrc.to/embed/tv/{stream_id}/{season}/{episode}` |
 
 ---
 

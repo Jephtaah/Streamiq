@@ -9,20 +9,10 @@ export default function Layout() {
           <Link to="/" className="text-xl font-bold text-indigo-500">
             Streamiq
           </Link>
-          <div className="flex w-full items-center md:mx-auto md:max-w-xl md:flex-1 md:justify-center">
+          <div className="flex w-full items-center md:ml-auto md:max-w-xl md:justify-end">
             <SearchBar />
           </div>
-          <nav className="flex items-center gap-6 text-sm font-medium text-neutral-300 md:justify-end">
-            <Link to="/" className="transition-colors hover:text-white">
-              Home
-            </Link>
-            <Link to="/search" className="transition-colors hover:text-white">
-              Movies
-            </Link>
-            <Link to="/search" className="transition-colors hover:text-white">
-              TV Shows
-            </Link>
-          </nav>
+
         </div>
       </header>
       <main className="flex-1">
