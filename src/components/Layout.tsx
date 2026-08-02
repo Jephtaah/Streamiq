@@ -19,7 +19,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-neutral-800 px-4 py-4 text-center text-xs text-neutral-500 md:px-6">
-        Powered by JustWatch
+        Created by Jephtah
       </footer>
     </div>
   )
